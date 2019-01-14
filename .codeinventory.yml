@@ -1,0 +1,13 @@
+
+name: 'GSA/grace-tenant-cleanup'
+description: 'Go program to delete services from AWS accounts prior to decommissioning'
+license: null
+openSourceProject: 1
+governmentWideReuseProject: 1
+tags:
+    - open-source
+    - opensource
+    - grace
+    - devsecops
+contact:
+    email: devsecops-core@gsa.gov
