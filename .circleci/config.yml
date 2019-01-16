@@ -1,0 +1,85 @@
+version: 2
+jobs:
+  create_test_environment:
+    docker:
+      - image: hashicorp/terraform:light
+    steps:
+      - checkout
+      - run:
+          name: Display current working directory
+          command: pwd
+          working_directory: testdata/terraform
+      - run:
+          name: Initialize terraform
+          command: terraform init
+          working_directory: testdata/terraform
+      - run:
+          name: Validate terraform
+          command: terraform validate
+          working_directory: testdata/terraform
+      - run:
+          name: Apply terraform
+          command: terraform apply --auto-approve
+          working_directory: testdata/terraform
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./*
+  test:
+    docker:
+      - image: circleci/golang:latest
+    working_directory: /go/src/github.com/GSA/grace-tenant-cleanup
+    steps:
+      - checkout
+      - run:
+          name: Install dep
+          command: go get -u github.com/golang/dep/cmd/dep
+      - run:
+          name: Install dependencies
+          command: dep ensure
+      - run:
+          name: Install metalinter
+          command: |
+            go get -u github.com/alecthomas/gometalinter
+            gometalinter --install
+      - run:
+          name: Lint
+          command: gometalinter --deadline=300s --vendor ./...
+      - run:
+          name: Go security
+          command: gosec ./...
+      - run:
+          name: Run unit tests
+          command: go test
+      - run:
+          name: Run non-desctructive integration tests
+          command: go test -integration
+      - run:
+          name: Run destructive tests
+          command: go test -destructive
+  destroy_test_environment:
+    docker:
+      - image: hashicorp/terraform:light
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Destroy terraform
+          command: terraform destroy --auto-approve
+          working_directory: testdata/terraform
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - create_test_environment
+      - test:
+          requires:
+            - create_test_environment
+      - destroy_test_environment:
+          filters:
+            branches:
+              only: master
+          requires:
+            - create_test_environment
+            - test

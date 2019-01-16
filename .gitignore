@@ -6,3 +6,10 @@ vendor/
 release/
 .DS_Store
 */.DS_Store
+
+## Terraform ##
+*.tfvars
+# Compiled files
+*.tfstate*
+# Module directory
+.terraform/
