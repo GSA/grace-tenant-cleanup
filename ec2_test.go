@@ -11,8 +11,9 @@ import (
 const region = "us-west-2"
 const instanceName = "GRACE cleanup test"
 
-func terminatedInstances(svc *ec2.EC2) ([]*ec2.Instance, error) {
+func terminatedInstances(svc *ec2.EC2) (int, error) {
 	// Only grab instances that are terminated
+	i := 0
 	filters := []*ec2.Filter{
 		&ec2.Filter{
 			Name:   aws.String("instance-state-name"),
@@ -22,12 +23,12 @@ func terminatedInstances(svc *ec2.EC2) ([]*ec2.Instance, error) {
 	request := &ec2.DescribeInstancesInput{Filters: filters}
 	result, err := svc.DescribeInstances(request)
 	if err != nil {
-		return nil, err
+		return i, err
 	}
-	if len(result.Reservations) > 0 {
-		return result.Reservations[0].Instances, nil
+	for _, r := range result.Reservations {
+		i = i + len(r.Instances)
 	}
-	return nil, nil
+	return i, nil
 }
 
 func TestFetchInstances(t *testing.T) {
@@ -46,14 +47,22 @@ func TestFetchInstances(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to fetch terminated instances: %v", err)
 	}
-	if len(ids) != 1+len(terminated) {
-		t.Fatalf("expected %v instance(s).  Got %v", 1+len(terminated), len(ids))
+	if len(ids) != 1+terminated {
+		t.Fatalf("expected %v instance(s).  Got %v", 1+terminated, len(ids))
 	}
+	err = checkInstances(t, ids, svc)
+	if err != nil {
+		t.Fatalf("Error checking instances: %v", err)
+	}
+}
+
+func checkInstances(t *testing.T, ids []*string, svc *ec2.EC2) error {
 	resp, err := svc.DescribeInstances(&ec2.DescribeInstancesInput{
 		InstanceIds: ids,
 	})
 	if err != nil {
 		t.Fatalf("Error describing instances: %v", err)
+		return err
 	}
 	for _, r := range resp.Reservations {
 		for _, i := range r.Instances {
@@ -70,9 +79,7 @@ func TestFetchInstances(t *testing.T) {
 			}
 		}
 	}
-	if err != nil {
-		t.Fatalf("Error describing instances: %v", err)
-	}
+	return nil
 }
 
 func TestCleanupEc2Instances(t *testing.T) {
