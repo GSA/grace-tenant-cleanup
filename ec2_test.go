@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -33,7 +31,6 @@ func terminatedInstances(svc *ec2.EC2) ([]*ec2.Instance, error) {
 }
 
 func TestFetchInstances(t *testing.T) {
-	fmt.Printf("AWS Profile: %s\n", os.Getenv("AWS_PROFILE"))
 	if !(*integration || *destructive) {
 		t.Skip("skipping test in non-integration mode")
 	}
@@ -58,14 +55,23 @@ func TestFetchInstances(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error describing instances: %v", err)
 	}
-	if *resp.Reservations[0].Instances[0].InstanceId != *ids[0] {
-		t.Fatalf("Expected instance ID to equal %v.  Got %v", *resp.Reservations[0].Instances[0].InstanceId, *ids[0])
+	for _, r := range resp.Reservations {
+		for _, i := range r.Instances {
+			if *i.State.Name != "terminated" {
+				if len(i.Tags) != 1 {
+					t.Fatalf("Expected exactly one tag.  Got: %v", len(i.Tags))
+				}
+				if *i.Tags[0].Key != "Name" {
+					t.Fatalf("Expected first tag to be 'Name'.  Got '%v'", *i.Tags[0].Key)
+				}
+				if *i.Tags[0].Value != instanceName {
+					t.Fatalf("Expected first tag to be '%v'.  Got '%v'", instanceName, *i.Tags[0].Value)
+				}
+			}
+		}
 	}
-	if *resp.Reservations[0].Instances[0].Tags[0].Key != "Name" {
-		t.Fatalf("Expected first tag to be 'Name'.  Got '%v'", *resp.Reservations[0].Instances[0].Tags[0].Key)
-	}
-	if *resp.Reservations[0].Instances[0].Tags[0].Value != instanceName {
-		t.Fatalf("Expected first tag to be '%v'.  Got '%v'", instanceName, *resp.Reservations[0].Instances[0].Tags[0].Value)
+	if err != nil {
+		t.Fatalf("Error describing instances: %v", err)
 	}
 }
 
