@@ -1,3 +1,7 @@
+# Archived #
+
+We're looking at using [aws-nuke](https://github.com/rebuy-de/aws-nuke) instead.
+
 # grace-tenant-cleanup [![CircleCI](https://circleci.com/gh/GSA/grace-tenant-cleanup.svg?style=svg)](https://circleci.com/gh/GSA/grace-tenant-cleanup)
 
 Go program to delete services from AWS accounts prior to decommissioning
